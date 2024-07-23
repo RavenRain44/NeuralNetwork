@@ -15,13 +15,17 @@ testNetwork = Network.NeuralNetwork("Test Network", 2, 784, 16, 10)
 
 # testNetwork.loadInputData(mnistTestingData)
 # testNetwork.loadOutputData(mnistTestingLabelList)
-# for i in range(len(mnistTestingData)):
-#     testNetwork.fullCycle(i)
+# for i in range(round(len(mnistTestingData)/2)):
+#     if -len(mnistTestingData) <= i * 2 < len(mnistTestingData):
+#         testNetwork.fullCycle(i * 2)
 # testNetwork.storeModel("StoreFile.txt")
 
 testNetwork.loadModel("StoreFile.txt")
 testNetwork.loadInputData(mnistTestingData)
 testNetwork.loadOutputData(mnistTestingLabelList)
-for i in range(len(mnistTestingData)):
-    testNetwork.testModel(i)
+for i in range(round(len(mnistTestingData)/2)):
+    if -len(mnistTestingData) <= 1 + i * 2 < len(mnistTestingData):
+        testNetwork.setExpectedOutput(testNetwork.outputsDataset[1 + i * 2])
+        testNetwork.feedForward()
+        testNetwork.chooseOutput()
 print(testNetwork.calculateAccuracy())

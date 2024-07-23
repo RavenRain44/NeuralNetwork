@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import pickle as pkl
 
 
 def sigmoid(x):
@@ -34,7 +35,7 @@ class NeuralNetwork:
         self.hiddenLayers = None
         self.outputLayer = None
         self.output = None
-        self.numberCorrect = None
+        self.numberCorrect = 0
         self.__createLayers()
         self.__createWeights()
         self.__createBiases()
@@ -172,46 +173,53 @@ class NeuralNetwork:
         return len(self.inputsDataset)
 
     def storeModel(self, path):
-        with open(path, "w",) as file:
-            file.writelines([f"{self.name}\r\n", f"{self.numberOfHiddenLayers}\r\n", f"{self.numberOfInputNeurons}\r\n",
-                             f"{self.numberOfHiddenLayerNeurons}\r\n", f"{self.numberOfOutputNeurons}\r\n",
-                             f"{self.inputToHiddenWeights}\r\n", f"{self.hiddenToHiddenWeights}\r\n",
-                             f"{self.hiddenToOutputWeights}\r\n", f"{self.hiddenBiases}\r\n", f"{self.outputBiases}\r\n",
-                             f"{self.expectedOutput}\r\n", f"{self.cost}\r\n", f"{list(self.inputsDataset)}\r\n",
-                             f"{self.outputsDataset}\r\n"])
+        storeFile = open(path, "ab")
+        pkl.dump(self, storeFile)
+        storeFile.close()
 
-            print("Model stored")
+        print("Model stored")
 
     def loadModel(self, path):
-        with open(path, "r") as file:
-            data = file.readlines()
-            self.name = data[0]
-            self.numberOfHiddenLayers = int(data[1])
-            self.numberOfInputNeurons = int(data[2])
-            self.numberOfHiddenLayerNeurons = int(data[3])
-            self.numberOfOutputNeurons = int(data[4])
-            self.inputToHiddenWeights = eval(data[5])
-            self.hiddenToHiddenWeights = eval(data[6])
-            self.hiddenToOutputWeights = eval(data[7])
-            self.hiddenBiases = eval(data[8])
-            self.outputBiases = eval(data[9])
-            self.expectedOutput = eval(data[10])
-            self.cost = float(data[11][:-2])
-            self.inputsDataset = eval(data[12])
-            self.outputsDataset = eval(data[13])
+        loadFile = open(path, "rb")
+        loadedModel = pkl.load(loadFile)
+        self.importModel(loadedModel)
+        loadFile.close()
 
         print("Model loaded")
 
+    def importModel(self, model):
+        self.name = model.name
+        self.numberOfHiddenLayers = model.numberOfHiddenLayers
+        self.numberOfInputNeurons = model.numberOfInputNeurons
+        self.numberOfHiddenLayerNeurons = model.numberOfHiddenLayerNeurons
+        self.numberOfOutputNeurons = model.numberOfOutputNeurons
+        self.outputBiases = model.outputBiases
+        self.hiddenBiases = model.hiddenBiases
+        self.hiddenToOutputWeights = model.hiddenToOutputWeights
+        self.hiddenToHiddenWeights = model.hiddenToHiddenWeights
+        self.inputToHiddenWeights = model.inputToHiddenWeights
+        self.expectedOutput = model.expectedOutput
+        self.cost = model.cost
+        self.inputsDataset = model.inputsDataset
+        self.outputsDataset = model.outputsDataset
+        self.inputLayer = model.inputLayer
+        self.hiddenLayers = model.hiddenLayers
+        self.outputLayer = model.outputLayer
+        self.output = model.output
+        self.numberCorrect = model.numberCorrect
+
     def chooseOutput(self):
         self.output = self.outputLayer.index(max(self.outputLayer))
-        if self.expectedOutput[self.output] == 1:
+        if self.numberCorrect is None:
+            self.numberCorrect = 0
+        if self.expectedOutput == self.outputLayer:
             self.numberCorrect += 1
             print(f"Output: {self.output} is correct")
         else:
             print(f"Output: {self.output} is incorrect")
 
     def calculateAccuracy(self):
-        return self.numberCorrect / len(self.outputsDataset) * 100
+        return f"Accuracy: {self.numberCorrect / len(self.outputsDataset) * 100}"
 
     def testModel(self, datasetIteration):
         if self.inputsDataset is None or self.outputsDataset is None:
