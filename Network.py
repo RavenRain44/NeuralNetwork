@@ -163,7 +163,6 @@ class NeuralNetwork:
             print("Error: Dataset(s) missing")
             return
         self.inputLayer = self.inputsDataset[datasetIteration]
-        print(f'Input: {self.inputLayer}')
         self.setExpectedOutput(self.outputsDataset[datasetIteration])
         print(f'Expected Output: {self.expectedOutput}')
         self.feedForward()
