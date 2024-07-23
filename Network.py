@@ -108,6 +108,7 @@ class NeuralNetwork:
         print("Expected output set")
 
     def backPropagate(self, learning_rate=0.1):
+
         # Calculate output layer error
         output_errors = [0] * self.numberOfOutputNeurons
         for i in range(self.numberOfOutputNeurons):
@@ -163,8 +164,11 @@ class NeuralNetwork:
             print("Error: Dataset(s) missing")
             return
         self.inputLayer = self.inputsDataset[datasetIteration]
+        print(f'Input: {self.inputLayer}')
         self.setExpectedOutput(self.outputsDataset[datasetIteration])
+        print(f'Expected Output: {self.expectedOutput}')
         self.feedForward()
+        print(f'Output: {self.outputLayer}')
         self.calculateCost()
         self.backPropagate()
         print("Full Cycle Complete")
