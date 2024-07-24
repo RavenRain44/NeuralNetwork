@@ -32,15 +32,13 @@ testNetwork.loadOutputData(mnistTestingLabelList)
 
 testNetwork.randomizeData()
 
-testNetwork.epoch(0.1, 10)
+testNetwork.showLog(False)
+testNetwork.epoch(0.1, 15)
 testNetwork.storeModel("StoreFile.txt")
 
 # testNetwork.loadModel("StoreFile.txt")
 # testNetwork.loadInputData(mnistTestingData)
 # testNetwork.loadOutputData(mnistTestingLabelList)
-# for i in range(round(len(mnistTestingData)/2)):
-#     if -len(mnistTestingData) <= 1 + i * 2 < len(mnistTestingData):
-#         testNetwork.setExpectedOutput(testNetwork.outputsDataset[1 + i * 2])
-#         testNetwork.feedForward()
-#         testNetwork.chooseOutput()
-# print(testNetwork.calculateAccuracy())
+
+testNetwork.testModel()
+print(testNetwork.calculateAccuracy())

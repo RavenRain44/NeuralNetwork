@@ -7,253 +7,212 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
+def sigmoid_derivation(x):
+    return sigmoid(x) * (1 - sigmoid(x))
+
+
+def tanh(x):
+    return np.tanh(x)
+
+
+def tanh_derivation(x):
+    return 1 - np.tanh(x) ** 2
+
+
+def forceLog(message):
+    print(message)
+
+
 class NeuralNetwork:
     def __init__(self, name, number_of_hidden_layers, number_of_input_neurons, number_of_hidden_layer_neurons,
                  number_of_output_neurons, randomize=True):
 
         if number_of_input_neurons <= 0 or number_of_hidden_layer_neurons <= 0 or number_of_output_neurons <= 0:
-            print("Error: Missing neurons")
-            return
+            raise ValueError("Error: Missing neurons")
         if number_of_hidden_layers <= 0:
-            print("Error: Invalid number of hidden layers")
-            return
+            raise ValueError("Error: Invalid number of hidden layers")
+
         self.name = name
         self.numberOfHiddenLayers = number_of_hidden_layers
         self.numberOfInputNeurons = number_of_input_neurons
         self.numberOfHiddenLayerNeurons = number_of_hidden_layer_neurons
         self.numberOfOutputNeurons = number_of_output_neurons
-        self.outputBiases = None
-        self.hiddenBiases = None
-        self.hiddenToOutputWeights = None
-        self.hiddenToHiddenWeights = None
-        self.inputToHiddenWeights = None
+
+        self.outputBiases = np.zeros(self.numberOfOutputNeurons)
+        self.hiddenBiases = [np.zeros(self.numberOfHiddenLayerNeurons) for _ in range(self.numberOfHiddenLayers)]
+        self.hiddenToOutputWeights = np.random.rand(self.numberOfOutputNeurons, self.numberOfHiddenLayerNeurons)
+        self.hiddenToHiddenWeights = [np.random.rand(self.numberOfHiddenLayerNeurons, self.numberOfHiddenLayerNeurons)
+                                      for _ in range(self.numberOfHiddenLayers - 1)]
+        self.inputToHiddenWeights = np.random.rand(self.numberOfHiddenLayerNeurons, self.numberOfInputNeurons)
+
         self.expectedOutput = None
         self.cost = None
         self.inputsDataset = None
         self.outputsDataset = None
         self.inputLayer = None
-        self.hiddenLayers = None
-        self.outputLayer = None
+        self.hiddenLayers = [np.zeros(self.numberOfHiddenLayerNeurons) for _ in range(self.numberOfHiddenLayers)]
+        self.outputLayer = np.zeros(self.numberOfOutputNeurons)
         self.output = None
         self.numberCorrect = 0
         self.logValues = True
-        self.__createLayers()
-        self.__createWeights()
-        self.__createBiases()
+
         if randomize:
             self.randomizeAll()
-        print(f"{self.name} successfully created")
+        self._log(f"{self.name} successfully created")
 
-    def __createLayers(self):
-        self.inputLayer = [0] * self.numberOfInputNeurons
-        self.hiddenLayers = [[0] * self.numberOfHiddenLayerNeurons] * self.numberOfHiddenLayers
-        self.outputLayer = [0] * self.numberOfOutputNeurons
-        print("Layers created") if self.logValues else False
-
-    def __createWeights(self):
-        self.inputToHiddenWeights = [[0] * self.numberOfInputNeurons] * self.numberOfHiddenLayerNeurons
-        self.hiddenToHiddenWeights = ([[[0] * self.numberOfHiddenLayerNeurons] * self.numberOfHiddenLayerNeurons] * (
-            self.numberOfHiddenLayers))
-        self.hiddenToOutputWeights = [[0] * self.numberOfHiddenLayerNeurons] * self.numberOfOutputNeurons
-        print("Weights created") if self.logValues else False
-
-    def __createBiases(self):
-        self.hiddenBiases = [[0] * self.numberOfHiddenLayerNeurons] * self.numberOfHiddenLayers
-        self.outputBiases = [0] * self.numberOfOutputNeurons
-        print("Biases created") if self.logValues else False
+    def _log(self, message):
+        if self.logValues:
+            print(message)
 
     def randomizeAll(self):
         self.randomizeWeights()
         self.randomizeBiases()
-        print("Randomized all") if self.logValues else False
+        self._log("Randomized all")
 
     def randomizeWeights(self):
-        self.inputToHiddenWeights = [[random.random() for i in range(self.numberOfInputNeurons)] for j in
-                                     range(self.numberOfHiddenLayerNeurons)]
-        self.hiddenToHiddenWeights = [[[random.random() for i in range(self.numberOfHiddenLayerNeurons)] for j in
-                                       range(self.numberOfHiddenLayerNeurons)] for k in
-                                      range(self.numberOfHiddenLayers)]
-        self.hiddenToOutputWeights = [[random.random() for i in range(self.numberOfHiddenLayerNeurons)] for j in
-                                      range(self.numberOfOutputNeurons)]
-        print("Randomized weights") if self.logValues else False
+        self.inputToHiddenWeights = np.random.rand(self.numberOfHiddenLayerNeurons, self.numberOfInputNeurons)
+        self.hiddenToHiddenWeights = [np.random.rand(self.numberOfHiddenLayerNeurons, self.numberOfHiddenLayerNeurons)
+                                      for _ in range(self.numberOfHiddenLayers - 1)]
+        self.hiddenToOutputWeights = np.random.rand(self.numberOfOutputNeurons, self.numberOfHiddenLayerNeurons)
+        self._log("Randomized weights")
 
     def randomizeBiases(self):
-        self.hiddenBiases = [[random.random() for i in range(self.numberOfHiddenLayerNeurons)] for j in
-                             range(self.numberOfHiddenLayers)]
-        self.outputBiases = [random.random() for i in range(self.numberOfOutputNeurons)]
-        print("Randomized biases") if self.logValues else False
+        self.hiddenBiases = [np.random.rand(self.numberOfHiddenLayerNeurons) for _ in range(self.numberOfHiddenLayers)]
+        self.outputBiases = np.random.rand(self.numberOfOutputNeurons)
+        self._log("Randomized biases")
 
     def feedForward(self):
-        for i in range(self.numberOfHiddenLayerNeurons):
-            self.hiddenLayers[0][i] = np.dot(self.inputLayer, self.inputToHiddenWeights[i]) + self.hiddenBiases[0][i]
-            self.hiddenLayers[0][i] = sigmoid(self.hiddenLayers[0][i])
+        self.hiddenLayers[0] = tanh(np.dot(self.inputToHiddenWeights, self.inputLayer) + self.hiddenBiases[0])
         for i in range(1, self.numberOfHiddenLayers):
-            for j in range(self.numberOfHiddenLayerNeurons):
-                self.hiddenLayers[i][j] = np.dot(self.hiddenLayers[i - 1], self.hiddenToHiddenWeights[i][j]) + \
-                                          self.hiddenBiases[i][j]
-                self.hiddenLayers[i][j] = sigmoid(self.hiddenLayers[i][j])
-        for i in range(self.numberOfOutputNeurons):
-            self.outputLayer[i] = np.dot(self.hiddenLayers[self.numberOfHiddenLayers - 1],
-                                         self.hiddenToOutputWeights[i]) + self.outputBiases[i]
-            self.outputLayer[i] = sigmoid(self.outputLayer[i])
-        print("Feed Forward Complete") if self.logValues else False
+            self.hiddenLayers[i] = tanh(
+                np.dot(self.hiddenToHiddenWeights[i - 1], self.hiddenLayers[i - 1]) + self.hiddenBiases[i])
+        self.outputLayer = sigmoid(np.dot(self.hiddenToOutputWeights, self.hiddenLayers[-1]) + self.outputBiases)
+        self._log("Feed Forward Complete")
 
     def calculateCost(self):
-        self.cost = 0
-        for i in range(self.numberOfOutputNeurons):
-            self.cost += 0.5 * (self.outputLayer[i] - self.expectedOutput[i]) ** 2
-        print(f"Cost: {self.cost}") if self.logValues else False
+        self.cost = np.sum((self.outputLayer - self.expectedOutput) ** 2)
+        self._log(f"Cost: {self.cost}")
 
     def setExpectedOutput(self, expected_output):
         self.expectedOutput = expected_output
-        print("Expected output set") if self.logValues else False
+        self._log("Expected output set")
 
     def backPropagate(self, learning_rate=0.1):
-        # Calculate output layer error
-        output_errors = [0] * self.numberOfOutputNeurons
-        for i in range(self.numberOfOutputNeurons):
-            output_errors[i] = (self.expectedOutput[i] - self.outputLayer[i]) * self.outputLayer[i] * (
-                    1 - self.outputLayer[i])
+        # Ensure that all required variables are NumPy arrays
+        self.inputLayer = np.array(self.inputLayer)
+        self.hiddenLayers = [np.array(layer) for layer in self.hiddenLayers]
 
-        # Calculate hidden layer error
-        hidden_errors = [[0] * self.numberOfHiddenLayerNeurons for _ in range(self.numberOfHiddenLayers)]
-        for i in range(self.numberOfHiddenLayers - 1, -1, -1):
-            if i == self.numberOfHiddenLayers - 1:
-                for j in range(self.numberOfHiddenLayerNeurons):
-                    hidden_errors[i][j] = sum(self.hiddenToOutputWeights[k][j] * output_errors[k] for k in
-                                              range(self.numberOfOutputNeurons)) * self.hiddenLayers[i][j] * (
-                                                  1 - self.hiddenLayers[i][j])
-            else:
-                for j in range(self.numberOfHiddenLayerNeurons):
-                    hidden_errors[i][j] = sum(self.hiddenToHiddenWeights[i + 1][k][j] * hidden_errors[i + 1][k] for k in
-                                              range(self.numberOfHiddenLayerNeurons)) * self.hiddenLayers[i][j] * (
-                                                  1 - self.hiddenLayers[i][j])
+        # Calculate output layer error
+        output_errors = (self.expectedOutput - self.outputLayer) * tanh_derivation(self.outputLayer)
+
+        # Calculate hidden layer errors
+        hidden_errors = [np.zeros(self.numberOfHiddenLayerNeurons) for _ in range(self.numberOfHiddenLayers)]
+        hidden_errors[-1] = np.dot(self.hiddenToOutputWeights.T, output_errors) * tanh_derivation(
+            self.hiddenLayers[-1])
+        for i in range(self.numberOfHiddenLayers - 2, -1, -1):
+            hidden_errors[i] = np.dot(self.hiddenToHiddenWeights[i].T, hidden_errors[i + 1]) * tanh_derivation(
+                self.hiddenLayers[i])
 
         # Update output layer weights and biases
-        for i in range(self.numberOfOutputNeurons):
-            for j in range(self.numberOfHiddenLayerNeurons):
-                self.hiddenToOutputWeights[i][j] += learning_rate * output_errors[i] * self.hiddenLayers[-1][j]
-            self.outputBiases[i] += learning_rate * output_errors[i]
+        self.hiddenToOutputWeights += learning_rate * np.dot(output_errors[:, np.newaxis],
+                                                             self.hiddenLayers[-1][np.newaxis, :])
+        self.outputBiases += learning_rate * output_errors
 
         # Update hidden layer weights and biases
-        for i in range(self.numberOfHiddenLayers - 1, -1, -1):
-            if i > 0:
-                for j in range(self.numberOfHiddenLayerNeurons):
-                    for k in range(self.numberOfHiddenLayerNeurons):
-                        self.hiddenToHiddenWeights[i][j][k] += learning_rate * hidden_errors[i][j] * \
-                                                               self.hiddenLayers[i - 1][k]
-                    self.hiddenBiases[i][j] += learning_rate * hidden_errors[i][j]
-            else:
-                for j in range(self.numberOfHiddenLayerNeurons):
-                    for k in range(self.numberOfInputNeurons):
-                        self.inputToHiddenWeights[j][k] += learning_rate * hidden_errors[i][j] * self.inputLayer[k]
-                    self.hiddenBiases[i][j] += learning_rate * hidden_errors[i][j]
+        for i in range(self.numberOfHiddenLayers - 1, 0, -1):
+            self.hiddenToHiddenWeights[i - 1] += learning_rate * np.dot(hidden_errors[i][:, np.newaxis],
+                                                                        self.hiddenLayers[i - 1][np.newaxis, :])
+            self.hiddenBiases[i] += learning_rate * hidden_errors[i]
+        self.inputToHiddenWeights += learning_rate * np.dot(hidden_errors[0][:, np.newaxis],
+                                                            self.inputLayer[np.newaxis, :])
+        self.hiddenBiases[0] += learning_rate * hidden_errors[0]
 
-        print("Back Propagation Complete") if self.logValues else False
+        self._log("Back Propagation Complete")
 
     def loadInputData(self, dataset):
         self.inputsDataset = dataset
-        print("Input Dataset loaded") if self.logValues else False
+        self._log("Input Dataset loaded")
 
     def loadOutputData(self, dataset):
         self.outputsDataset = dataset
-        print("Output Dataset loaded") if self.logValues else False
+        forceLog("Output Dataset loaded")
 
     def fullCycle(self, dataset_iteration, learning_rate=0.1):
         if self.inputsDataset is None or self.outputsDataset is None:
-            print("Error: Dataset(s) missing")
+            self._log("Error: Dataset(s) missing")
             return
         self.inputLayer = self.inputsDataset[dataset_iteration]
         self.setExpectedOutput(self.outputsDataset[dataset_iteration])
-        print(f'Expected Output: {self.expectedOutput}') if self.logValues else False
+        self._log(f'Expected Output: {self.expectedOutput}')
         self.feedForward()
-        print(f'Output: {self.outputLayer}')
-        self.chooseOutput() if self.logValues else False
-        print(f'Selected Output: {self.output}')
-        self.calculateCost() if self.logValues else False
+        self._log(f'Output: {self.outputLayer}')
+        self.chooseOutput()
+        self._log(f'Selected Output: {self.output}')
+        self.calculateCost()
         self.backPropagate(learning_rate)
-        print("Full Cycle Complete") if self.logValues else False
+        self._log("Full Cycle Complete")
 
     def epoch(self, learning_rate=0.1, epochs=1):
         for i in range(epochs):
             for j in range(len(self.inputsDataset)):
                 self.fullCycle(j, learning_rate)
             self.randomizeData()
-        print("Epoch Complete") if self.logValues else False
+            forceLog("Epoch Complete")
 
     def getDatasetLength(self):
         return len(self.inputsDataset)
 
     def storeModel(self, path):
-        storeFile = open(path, "ab")
-        pkl.dump(self, storeFile)
-        storeFile.close()
-
-        print("Model stored") if self.logValues else False
+        with open(path, "wb") as storeFile:
+            pkl.dump(self, storeFile)
+        self._log("Model stored")
 
     def loadModel(self, path):
-        loadFile = open(path, "rb")
-        loadedModel = pkl.load(loadFile)
-        self.importModel(loadedModel)
-        loadFile.close()
-
-        print("Model loaded") if self.logValues else False
+        with open(path, "rb") as loadFile:
+            loadedModel = pkl.load(loadFile)
+            self.importModel(loadedModel)
+        self._log("Model loaded")
 
     def importModel(self, model):
-        self.name = model.name
-        self.numberOfHiddenLayers = model.numberOfHiddenLayers
-        self.numberOfInputNeurons = model.numberOfInputNeurons
-        self.numberOfHiddenLayerNeurons = model.numberOfHiddenLayerNeurons
-        self.numberOfOutputNeurons = model.numberOfOutputNeurons
-        self.outputBiases = model.outputBiases
-        self.hiddenBiases = model.hiddenBiases
-        self.hiddenToOutputWeights = model.hiddenToOutputWeights
-        self.hiddenToHiddenWeights = model.hiddenToHiddenWeights
-        self.inputToHiddenWeights = model.inputToHiddenWeights
-        self.expectedOutput = model.expectedOutput
-        self.cost = model.cost
-        self.inputsDataset = model.inputsDataset
-        self.outputsDataset = model.outputsDataset
-        self.inputLayer = model.inputLayer
-        self.hiddenLayers = model.hiddenLayers
-        self.outputLayer = model.outputLayer
-        self.output = model.output
-        self.numberCorrect = model.numberCorrect
+        self.__dict__.update(model.__dict__)
 
     def chooseOutput(self):
-        self.output = self.outputLayer.index(max(self.outputLayer))
+        self.output = np.argmax(self.outputLayer)
         if self.numberCorrect is None:
             self.numberCorrect = 0
-        if np.array_equal(self.output, self.expectedOutput):
+        if self.output == np.argmax(self.expectedOutput):
             self.numberCorrect += 1
-            print(f"Output: {self.output} is correct")
+            self._log(f"Output: {self.output} is correct")
         else:
-            print(f"Output: {self.output} is incorrect")
+            self._log(f"Output: {self.output} is incorrect")
 
     def calculateAccuracy(self):
-        return f"Accuracy: {self.numberCorrect / len(self.outputsDataset) * 100}"
+        return f"Accuracy: {self.numberCorrect / len(self.inputsDataset) * 100}"
 
-    def testModel(self, dataset_iteration):
-        if self.inputsDataset is None or self.outputsDataset is None:
-            print("Error: Dataset(s) missing")
-            return
-        self.inputLayer = self.inputsDataset[dataset_iteration]
-        self.setExpectedOutput(self.outputsDataset[dataset_iteration])
-        self.feedForward()
-        self.calculateCost()
-        print("Test Complete") if self.logValues else False
+    def testModel(self, test_inputs=None, test_outputs=None):
+        if test_inputs is not None and test_outputs is not None:
+            self.inputsDataset = test_inputs
+            self.outputsDataset = test_outputs
+        self.randomizeData()
+        self.numberCorrect = 0
+        for i in range(len(self.inputsDataset)):
+            if self.inputsDataset is None or self.outputsDataset is None:
+                self._log("Error: Dataset(s) missing")
+                return
+            self.inputLayer = self.inputsDataset[i]
+            self.setExpectedOutput(self.outputsDataset[i])
+            self.feedForward()
+            self.chooseOutput()
+        self._log("Test Complete")
 
     def randomizeData(self):
         indices = np.random.permutation(len(self.inputsDataset))
-        inputs = np.array(self.inputsDataset)
-        outputs = np.array(self.outputsDataset)
+        self.inputsDataset = np.array(self.inputsDataset)[indices].tolist()
+        self.outputsDataset = np.array(self.outputsDataset)[indices].tolist()
 
-        self.inputsDataset = list(inputs[indices])
-        self.outputsDataset = list(outputs[indices])
-
-    def logValues(self, log_values):
+    def showLog(self, log_values):
         self.logValues = log_values
-        print(f"Log values set to true") if self.logValues else False
+        self._log(f"Log values set to {self.logValues}")
 
     def __del__(self):
-        print(f"{self.name} destroyed")
+        self._log(f"{self.name} destroyed")
