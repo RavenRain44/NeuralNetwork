@@ -9,10 +9,8 @@ data = mnist["data"].T
 data = data / 255.0
 labels = mnist["label"][0]
 
-indices = np.random.permutation(len(data))
-
-mnistTestingData = data[indices]
-mnistTestingLabel = labels[indices]
+mnistTestingData = data
+mnistTestingLabel = labels
 
 mnistTestingLabelList = []
 for i in range(len(mnistTestingLabel)):
@@ -31,13 +29,10 @@ testNetwork = Network.NeuralNetwork("Test Network", 2, 784, 16, 10)
 
 testNetwork.loadInputData(mnistTestingData)
 testNetwork.loadOutputData(mnistTestingLabelList)
-i = 0
-for i in range(round(len(mnistTestingData)/2)):
-    if -len(mnistTestingData) <= i * 2 < len(mnistTestingData):
-        if i == 1:
-            break
-        i += 1
-        testNetwork.fullCycle(i * 2)
+
+testNetwork.randomizeData()
+
+testNetwork.epoch(0.1, 10)
 testNetwork.storeModel("StoreFile.txt")
 
 # testNetwork.loadModel("StoreFile.txt")
