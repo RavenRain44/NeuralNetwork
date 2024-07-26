@@ -1,44 +1,55 @@
-import Network
-import random
+from Network import Dense, Tanh, mse, mse_prime
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.io import loadmat
-mnist = loadmat("./input/mnist-original.mat")
 
-data = mnist["data"].T
-data = data / 255.0
-labels = mnist["label"][0]
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import np_utils
 
-mnistTestingData = data
-mnistTestingLabel = labels
+# load MNIST from server
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-mnistTestingLabelList = []
-for i in range(len(mnistTestingLabel)):
-    mnistTestingLabelList.append([])
-    for j in range(10):
-        mnistTestingLabelList[i].append(1 if mnistTestingLabel[i] == j else 0)
+# training data : 60000 samples
+# reshape and normalize input data
+x_train = x_train.reshape(x_train.shape[0], 1, 28*28)
+x_train = x_train.astype('float32')
+x_train /= 255
+# encode output which is a number in range [0,9] into a vector of size 10
+# e.g. number 3 will become [0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+y_train = np_utils.to_categorical(y_train)
 
-image_array = np.array(mnistTestingData[0]).reshape(28, 28)
+# same for test data : 10000 samples
+x_test = x_test.reshape(x_test.shape[0], 1, 28*28)
+x_test = x_test.astype('float32')
+x_test /= 255
+y_test = np_utils.to_categorical(y_test)
 
-plt.imshow(image_array, cmap='gray', vmin=0, vmax=1)
-plt.title(f'Label: {mnistTestingLabel[0]}')
-plt.axis('off')
-plt.show()
+X = np.reshape([[0, 0], [0, 1], [1, 0], [1, 1]], (4, 2, 1))
+Y = np.reshape([[0], [1], [1], [0]], (4, 1, 1))
 
-testNetwork = Network.NeuralNetwork("Test Network", 2, 784, 16, 10)
+network = [
+    Dense(2, 3),
+    Tanh(),
+    Dense(3, 1),
+    Tanh()
+]
 
-testNetwork.loadInputData(mnistTestingData)
-testNetwork.loadOutputData(mnistTestingLabelList)
+epochs = 10000
+learning_rate = 0.1
+# train
+for e in range(epochs):
+    error = 0
+    for x, y in zip(X, Y):
+        # forward
+        output = x
+        for layer in network:
+            output = layer.forward(output)
 
-testNetwork.randomizeData()
+        # error
+        error += mse(y, output)
 
-testNetwork.showLog(False)
-testNetwork.epoch(0.1, 15)
-testNetwork.storeModel("StoreFile.txt")
+        # backward
+        grad = mse_prime(y, output)
+        for layer in reversed(network):
+            grad = layer.backward(grad, learning_rate)
 
-# testNetwork.loadModel("StoreFile.txt")
-# testNetwork.loadInputData(mnistTestingData)
-# testNetwork.loadOutputData(mnistTestingLabelList)
-
-testNetwork.testModel()
-print(testNetwork.calculateAccuracy())
+    error /= len(X)
+    print('%d/%d, error=%f' % (e + 1, epochs, error))
